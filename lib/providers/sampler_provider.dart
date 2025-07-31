@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import '../models/sample.dart';
 import '../services/audio_service.dart';
 import '../services/recording_service.dart';
@@ -38,23 +39,69 @@ class SamplerProvider extends ChangeNotifier {
         allowMultiple: false,
       );
       
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final fileName = result.files.single.name;
+      if (result != null) {
+        final pickedFile = result.files.single;
+        final fileName = pickedFile.name;
+        
+        String? filePath;
+        Uint8List? fileBytes;
+        
+        if (kIsWeb) {
+          // En web, usar bytes
+          fileBytes = pickedFile.bytes;
+          if (fileBytes == null) {
+            debugPrint('Error: No se pudieron obtener los bytes del archivo');
+            return;
+          }
+          filePath = 'web_${DateTime.now().millisecondsSinceEpoch}_$fileName';
+        } else {
+          // En desktop, usar path
+          if (pickedFile.path == null) {
+            debugPrint('Error: No se pudo obtener la ruta del archivo');
+            return;
+          }
+          filePath = pickedFile.path!;
+        }
         
         final player = AudioPlayer();
-        await player.setFilePath(file.path);
-        final duration = player.duration ?? Duration.zero;
-        player.dispose();
+        Duration duration = Duration.zero;
         
-        final waveformData = await _audioService.generateWaveform(file.path);
+        try {
+          if (kIsWeb && fileBytes != null) {
+            // Para web, crear un AudioSource desde bytes
+            await player.setAudioSource(
+              AudioSource.uri(
+                Uri.dataFromBytes(fileBytes, mimeType: 'audio/${fileName.split('.').last}'),
+              ),
+            );
+          } else {
+            // Para desktop, usar archivo local
+            await player.setFilePath(filePath);
+          }
+          duration = player.duration ?? Duration.zero;
+        } catch (e) {
+          debugPrint('Error cargando audio: $e');
+          // Usar duración por defecto si no se puede obtener
+          duration = const Duration(seconds: 30);
+        } finally {
+          player.dispose();
+        }
+        
+        // Generar waveform
+        List<double> waveformData;
+        if (kIsWeb && fileBytes != null) {
+          waveformData = await _audioService.generateWaveformFromBytes(fileBytes);
+        } else {
+          waveformData = await _audioService.generateWaveform(filePath);
+        }
         
         final sample = Sample(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           name: fileName.split('.').first,
-          filePath: file.path,
+          filePath: filePath,
           duration: duration,
           waveformData: waveformData,
+          bytes: kIsWeb ? fileBytes : null, // Guardamos los bytes para web
         );
         
         _samples.add(sample);
@@ -74,7 +121,36 @@ class SamplerProvider extends ChangeNotifier {
       final player = _players[playerIndex];
       
       try {
-        await player.setFilePath(sample.filePath);
+        if (kIsWeb && sample.bytes != null) {
+          // Para web, usar bytes
+          final fileName = sample.name;
+          final extension = sample.filePath.split('.').last.toLowerCase();
+          String mimeType = 'audio/mpeg'; // default
+          
+          switch (extension) {
+            case 'mp3':
+              mimeType = 'audio/mpeg';
+              break;
+            case 'wav':
+              mimeType = 'audio/wav';
+              break;
+            case 'ogg':
+              mimeType = 'audio/ogg';
+              break;
+            case 'm4a':
+              mimeType = 'audio/mp4';
+              break;
+          }
+          
+          await player.setAudioSource(
+            AudioSource.uri(
+              Uri.dataFromBytes(sample.bytes!, mimeType: mimeType),
+            ),
+          );
+        } else {
+          // Para desktop, usar path
+          await player.setFilePath(sample.filePath);
+        }
         
         final startMs = (sample.duration.inMilliseconds * sample.startPosition).round();
         final endMs = (sample.duration.inMilliseconds * sample.endPosition).round();

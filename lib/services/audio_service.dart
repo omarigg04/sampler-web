@@ -1,10 +1,15 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 
 class AudioService {
   Future<List<double>> generateWaveform(String filePath) async {
     try {
+      if (kIsWeb) {
+        return _generateDummyWaveform();
+      }
+      
       final file = File(filePath);
       if (!await file.exists()) {
         return [];
@@ -14,6 +19,15 @@ class AudioService {
       return _processAudioBytes(bytes);
     } catch (e) {
       debugPrint('Error generating waveform: $e');
+      return _generateDummyWaveform();
+    }
+  }
+  
+  Future<List<double>> generateWaveformFromBytes(Uint8List bytes) async {
+    try {
+      return _processAudioBytes(bytes);
+    } catch (e) {
+      debugPrint('Error generating waveform from bytes: $e');
       return _generateDummyWaveform();
     }
   }
