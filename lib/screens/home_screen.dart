@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/sampler_provider.dart';
 import '../providers/midi_provider.dart';
@@ -55,21 +56,22 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Flutter Sampler'),
         centerTitle: true,
         actions: [
-          Consumer<SamplerProvider>(
-            builder: (context, provider, child) {
-              return IconButton(
-                icon: Icon(provider.isRecording ? Icons.stop : Icons.fiber_manual_record),
-                color: provider.isRecording ? Colors.red : null,
-                onPressed: () {
-                  if (provider.isRecording) {
-                    provider.stopRecording();
-                  } else {
-                    provider.startRecording();
-                  }
-                },
-              );
-            },
-          ),
+          if (!kIsWeb)
+            Consumer<SamplerProvider>(
+              builder: (context, provider, child) {
+                return IconButton(
+                  icon: Icon(provider.isRecording ? Icons.stop : Icons.fiber_manual_record),
+                  color: provider.isRecording ? Colors.red : null,
+                  onPressed: () {
+                    if (provider.isRecording) {
+                      provider.stopRecording();
+                    } else {
+                      provider.startRecording();
+                    }
+                  },
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () {
@@ -120,8 +122,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           Slider(
                             value: provider.masterVolume,
                             min: 0.0,
-                            max: 2.0,
-                            divisions: 100,
+                            max: kIsWeb ? 1.0 : 2.0, // Limitar max volumen en web
+                            divisions: kIsWeb ? 50 : 100,
                             label: '${(provider.masterVolume * 100).round()}%',
                             onChanged: provider.setMasterVolume,
                           ),

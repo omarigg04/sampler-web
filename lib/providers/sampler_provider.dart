@@ -156,7 +156,9 @@ class SamplerProvider extends ChangeNotifier {
         final endMs = (sample.duration.inMilliseconds * sample.endPosition).round();
         
         await player.seek(Duration(milliseconds: startMs));
-        player.setVolume(sample.volume * _masterVolume);
+        // Asegurar que el volumen esté entre 0 y 1 para web
+        final clampedVolume = (sample.volume * _masterVolume).clamp(0.0, 1.0);
+        player.setVolume(clampedVolume);
         
         if (sample.pitch != 1.0) {
           await player.setSpeed(sample.pitch);
@@ -218,7 +220,9 @@ class SamplerProvider extends ChangeNotifier {
   void updateSampleVolume(String sampleId, double volume) {
     final sampleIndex = _samples.indexWhere((s) => s.id == sampleId);
     if (sampleIndex != -1) {
-      _samples[sampleIndex].volume = volume.clamp(0.0, 2.0);
+      // En web, limitar el volumen máximo a 1.0
+      final maxVolume = kIsWeb ? 1.0 : 2.0;
+      _samples[sampleIndex].volume = volume.clamp(0.0, maxVolume);
       if (_selectedSample?.id == sampleId) {
         _selectedSample = _samples[sampleIndex];
       }
@@ -268,7 +272,9 @@ class SamplerProvider extends ChangeNotifier {
   }
   
   void setMasterVolume(double volume) {
-    _masterVolume = volume.clamp(0.0, 2.0);
+    // En web, limitar el volumen máximo a 1.0
+    final maxVolume = kIsWeb ? 1.0 : 2.0;
+    _masterVolume = volume.clamp(0.0, maxVolume);
     notifyListeners();
   }
   

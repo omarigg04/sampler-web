@@ -189,7 +189,7 @@ class WaveformPainter extends CustomPainter {
     if (waveformData.isEmpty) return;
 
     final selectedPaint = Paint()
-      ..color = Colors.orange
+      ..color = Colors.blue.withValues(alpha: 0.8)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.fill;
 
@@ -197,58 +197,94 @@ class WaveformPainter extends CustomPainter {
       ..color = Colors.grey.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
 
-    final markerPaint = Paint()
-      ..color = Colors.orange
-      ..strokeWidth = 2.0;
-
     final centerY = size.height / 2;
     final stepX = size.width / waveformData.length;
 
+    // Dibujar waveform
     for (int i = 0; i < waveformData.length; i++) {
       final x = i * stepX;
       final normalizedPosition = i / waveformData.length;
-      final amplitude = waveformData[i] * centerY;
+      final amplitude = waveformData[i] * (centerY * 0.8); // Reducir altura para que no se superponga
       
       final isInSelectedRange = normalizedPosition >= startPosition && normalizedPosition <= endPosition;
       final currentPaint = isInSelectedRange ? selectedPaint : backgroundPaint;
 
       canvas.drawRect(
-        Rect.fromLTWH(x, centerY - amplitude, stepX, amplitude * 2),
+        Rect.fromLTWH(x, centerY - amplitude, stepX.clamp(1.0, double.infinity), amplitude * 2),
         currentPaint,
       );
     }
 
+    // Dibujar marcadores encima de la waveform
     final startX = startPosition * size.width;
     final endX = endPosition * size.width;
+
+    // Líneas de marcadores con menor opacidad
+    final markerPaint = Paint()
+      ..color = (isDraggingStart ? Colors.red : Colors.orange).withValues(alpha: 0.7)
+      ..strokeWidth = 3.0;
 
     canvas.drawLine(
       Offset(startX, 0),
       Offset(startX, size.height),
-      markerPaint..color = isDraggingStart ? Colors.red : Colors.orange,
+      markerPaint,
     );
 
+    markerPaint.color = (isDraggingEnd ? Colors.red : Colors.orange).withValues(alpha: 0.7);
     canvas.drawLine(
       Offset(endX, 0),
       Offset(endX, size.height),
-      markerPaint..color = isDraggingEnd ? Colors.red : Colors.orange,
+      markerPaint,
     );
 
+    // Handles en la parte superior e inferior
     final handlePaint = Paint()
-      ..color = Colors.orange
       ..style = PaintingStyle.fill;
 
-    const handleSize = 8.0;
+    const handleSize = 12.0;
+    
+    // Handle de inicio (superior)
+    handlePaint.color = isDraggingStart ? Colors.red : Colors.orange;
     canvas.drawCircle(
-      Offset(startX, size.height - handleSize),
+      Offset(startX, handleSize),
       handleSize,
-      handlePaint..color = isDraggingStart ? Colors.red : Colors.orange,
+      handlePaint,
     );
-
+    
+    // Handle de fin (inferior)
+    handlePaint.color = isDraggingEnd ? Colors.red : Colors.orange;
     canvas.drawCircle(
       Offset(endX, size.height - handleSize),
       handleSize,
-      handlePaint..color = isDraggingEnd ? Colors.red : Colors.orange,
+      handlePaint,
     );
+
+    // Dibujar texto para los handles
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: 'START',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(startX - textPainter.width / 2, handleSize - textPainter.height / 2));
+
+    textPainter.text = TextSpan(
+      text: 'END',
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 8,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(endX - textPainter.width / 2, size.height - handleSize - textPainter.height / 2));
   }
 
   @override

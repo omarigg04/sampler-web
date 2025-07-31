@@ -20,6 +20,11 @@ class MidiProvider extends ChangeNotifier {
   }
   
   Future<void> _initializeMidi() async {
+    if (kIsWeb) {
+      debugPrint('MIDI not supported on web platform');
+      return;
+    }
+    
     try {
       _midiCommand = MidiCommand();
       
@@ -63,7 +68,7 @@ class MidiProvider extends ChangeNotifier {
   }
   
   Future<void> scanForDevices() async {
-    if (_midiCommand == null) return;
+    if (kIsWeb || _midiCommand == null) return;
     
     _isScanning = true;
     notifyListeners();

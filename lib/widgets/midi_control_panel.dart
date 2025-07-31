@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/midi_provider.dart';
 import '../providers/sampler_provider.dart';
@@ -39,7 +40,7 @@ class _MidiControlPanelState extends State<MidiControlPanel> {
                       onPressed: () => midiProvider.disconnectDevice(),
                       child: const Text('Disconnect'),
                     )
-                  else
+                  else if (!kIsWeb)
                     ElevatedButton(
                       onPressed: midiProvider.isScanning 
                           ? null 
@@ -128,26 +129,33 @@ class _MidiControlPanelState extends State<MidiControlPanel> {
                 const SizedBox(height: 16),
                 const VirtualPianoKeyboard(),
               ] else ...[
-                const Expanded(
+                Expanded(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.piano, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         Text(
-                          'No MIDI devices found',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                          kIsWeb ? 'MIDI not supported on web' : 'No MIDI devices found',
+                          style: const TextStyle(fontSize: 18, color: Colors.grey),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
-                          'Tap "Scan" to search for MIDI devices',
-                          style: TextStyle(color: Colors.grey),
+                          kIsWeb 
+                              ? 'Use the virtual keyboard below or run on desktop for MIDI support'
+                              : 'Tap "Scan" to search for MIDI devices',
+                          style: const TextStyle(color: Colors.grey),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
                 ),
+                if (kIsWeb) ...[
+                  const SizedBox(height: 16),
+                  const VirtualPianoKeyboard(),
+                ],
               ],
             ],
           ),

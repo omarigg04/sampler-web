@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_sliders/sliders.dart';
 import '../providers/sampler_provider.dart';
@@ -65,7 +66,7 @@ class SampleControls extends StatelessWidget {
                   'Volume',
                   sample.volume,
                   0.0,
-                  2.0,
+                  kIsWeb ? 1.0 : 2.0, // Limitar max volumen en web
                   (value) {
                     context.read<SamplerProvider>().updateSampleVolume(sample.id, value);
                   },
